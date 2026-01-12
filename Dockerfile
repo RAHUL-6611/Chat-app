@@ -1,53 +1,57 @@
 # --- STAGE 1: Frontend Build ---
 FROM node:22-alpine AS frontend-builder
 WORKDIR /app/frontend
-# Install dependencies first for better caching
 COPY frontend/package*.json ./
 RUN npm ci
-# Copy source and build
 COPY frontend/ ./
-# Allow passing VITE_API_URL if needed, otherwise defaults to relative /
 ARG VITE_API_URL=""
 ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
-# --- STAGE 2: Backend Dependencies ---
+# --- STAGE 2: Backend Build ---
+FROM node:22-alpine AS backend-builder
+WORKDIR /app/backend
+COPY backend/package*.json ./
+RUN npm ci
+COPY backend/ ./
+RUN npm run build
+
+# --- STAGE 3: Backend Production Dependencies ---
 FROM node:22-alpine AS backend-deps
 WORKDIR /app/backend
 COPY backend/package*.json ./
 RUN npm ci --only=production
 
-# --- STAGE 3: Final Production Image ---
+# --- STAGE 4: Final Production Image ---
 FROM node:22-alpine
 LABEL maintainer="Rahul Parmar <rahul@parmar.ai>"
 
-# Create app directory
 WORKDIR /app
-
-# Set environment
 ENV NODE_ENV=production
 ENV PORT=5001
 
-# Copy backend dependencies
-COPY --from=backend-deps /app/backend/node_modules ./backend/node_modules
+# Copy backend package files
 COPY backend/package*.json ./backend/
 
-# Copy backend source
-COPY backend/src ./backend/src
+# Copy production node_modules from deps stage
+COPY --from=backend-deps /app/backend/node_modules ./backend/node_modules
 
-# Copy built frontend to the expected static serving path
+# Copy compiled backend code from builder stage
+COPY --from=backend-builder /app/backend/dist ./backend/dist
+
+# Copy built frontend to public directory
 COPY --from=frontend-builder /app/frontend/dist ./backend/public
 
-# Security: Use non-root user provided by node image
+# Security: Use non-root user
 USER node
 
 # Expose the application port
 EXPOSE 5001
 
-# Healthcheck to ensure the container is healthy
+# Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:5001/ || exit 1
 
-# Start the application
-CMD ["node", "backend/src/index.js"]
+# Start the application using the compiled file
+CMD ["node", "backend/dist/index.js"]
 

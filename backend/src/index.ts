@@ -15,6 +15,7 @@ import { IUser } from './models/User.js';
 import authRoutes from './routes/auth.routes.js';
 import chatRoutes from './routes/chat.routes.js';
 import { processMessageLogic } from './controllers/chat.controller.js';
+import { errorHandler } from './middleware/error.middleware.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -106,6 +107,9 @@ app.set('io', io);
 // Routes
 app.use('/auth', authRoutes);
 app.use('/chat', chatRoutes);
+
+// Global Error Handler (Must be last)
+app.use(errorHandler);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
