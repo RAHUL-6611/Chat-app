@@ -1,7 +1,7 @@
 import { useState, FormEvent, ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, Mail, Lock, Loader2 } from 'lucide-react';
+import {  Mail, Lock, Loader2 } from 'lucide-react';
 import axios from 'axios';
 
 const Login = () => {
