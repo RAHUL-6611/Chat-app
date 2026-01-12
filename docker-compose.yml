@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_API_URL=${VITE_API_URL:-}
-    container_name: ellavox-app
+    container_name: chat-app
     ports:
       - "5001:5001"
     environment:
@@ -22,8 +22,8 @@ services:
       timeout: 10s
       retries: 3
     networks:
-      - ellavox-network
+      - chat-app-network
 
 networks:
-  ellavox-network:
+  chat-app-network:
     driver: bridge

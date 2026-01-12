@@ -1,14 +1,25 @@
 import Message from '../models/Message.js';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-    baseURL: 'https://openrouter.ai/api/v1',
-    apiKey: process.env.OPEN_ROUTER,
-    defaultHeaders: {
-        "HTTP-Referer": "http://localhost:5173",
-        "X-Title": "Antigravity Support Agent",
+// Lazy initialization to ensure env vars are loaded
+let openai = null;
+
+const getOpenAIClient = () => {
+    if (!openai) {
+        if (!process.env.OPEN_ROUTER) {
+            throw new Error('OPEN_ROUTER environment variable is not set. Please configure it in your deployment settings.');
+        }
+        openai = new OpenAI({
+            baseURL: 'https://openrouter.ai/api/v1',
+            apiKey: process.env.OPEN_ROUTER,
+            defaultHeaders: {
+                "HTTP-Referer": process.env.FRONTEND_URL || "http://localhost:5173",
+                "X-Title": " Support Agent",
+            }
+        });
     }
-});
+    return openai;
+};
 
 // List of free models to rotate between to mitigate rate limits
 const FREE_MODELS = [
@@ -130,7 +141,8 @@ export const processMessageLogic = async ({ content, chatId, user, io }) => {
         const timeoutId = setTimeout(() => controller.abort(), 15000);
 
         try {
-            const stream = await openai.chat.completions.create({
+            const client = getOpenAIClient();
+            const stream = await client.chat.completions.create({
                 model: selectedModel,
                 messages: [
                     SYSTEM_PROMPT,

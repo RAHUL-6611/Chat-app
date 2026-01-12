@@ -32,15 +32,22 @@ git push origin main
 
 2.  **Configure Environment Variables**:
     -   Go to the **Variables** tab in your Railway project dashboard.
-    -   Add the following variables (copy values from your local `.env` or `.env.production.example`):
+    -   Add the following variables (copy values from your local `.env` or `.env.example`):
 
-    | Variable | Value Description |
-    | :--- | :--- |
-    | `NODE_ENV` | `production` |
-    | `MONGODB_URI` | Your MongoDB Connection String (e.g., from Atlas) |
-    | `JWT_SECRET` | A long random string for security |
-    | `OPEN_ROUTER` | Your OpenRouter API Key |
-    | `VITE_API_URL` | Set to `/` (this ensures frontend talks to the backend on the same domain) |
+    | Variable | Value Description | Example |
+    | :--- | :--- | :--- |
+    | `NODE_ENV` | Set to production | `production` |
+    | `MONGODB_URI` | Your MongoDB Connection String (e.g., from Atlas) | `mongodb+srv://user:pass@cluster.mongodb.net/chat_db` |
+    | `JWT_SECRET` | A long random string for security (generate with `openssl rand -base64 32`) | `your_secure_random_string_here` |
+    | `OPEN_ROUTER` | Your OpenRouter API Key | `sk-or-v1-xxxxx` |
+    | `FRONTEND_URL` | Your Railway deployment URL (update after first deploy) | `https://chat-app-production-xxxx.up.railway.app` |
+    | `VITE_API_URL` | Set to `/` (frontend talks to backend on same domain) | `/` |
+
+    **⚠️ IMPORTANT NOTES:**
+    - The variable is `MONGODB_URI` (not `MONGO_URI`)
+    - `VITE_API_URL` must be `/` since the Dockerfile serves frontend from the backend
+    - `FRONTEND_URL` can be updated after the first deployment when Railway assigns your URL
+    - Railway automatically sets `PORT` - do not add it manually
 
     *Note: `PORT` is automatically set by Railway and injected into the container.*
 
@@ -60,6 +67,10 @@ git push origin main
 
 ## Troubleshooting
 
+-   **"Missing credentials" or "OPEN_ROUTER key is missing" error?**
+    -   Ensure `OPEN_ROUTER` variable is set in Railway's Variables tab
+    -   The value should start with `sk-or-v1-` (your actual OpenRouter API key)
+    -   After adding/updating variables, trigger a new deployment
 -   **Frontend connection failed?**
     -   Check the browser console. If it tries to reach `localhost:5001`, ensure `VITE_API_URL` is set to `/` in Railway variables.
 -   **Database connection error?**

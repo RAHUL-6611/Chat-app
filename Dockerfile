@@ -19,7 +19,7 @@ RUN npm ci --only=production
 
 # --- STAGE 3: Final Production Image ---
 FROM node:22-alpine
-LABEL maintainer="Ellavox DevOps <devops@ellavox.ai>"
+LABEL maintainer="Rahul Parmar <rahul@parmar.ai>"
 
 # Create app directory
 WORKDIR /app

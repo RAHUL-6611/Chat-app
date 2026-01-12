@@ -28,12 +28,12 @@ const Sidebar = ({
 
     const handleShare = (e, session) => {
         e.stopPropagation(); // Don't switch chat
-        const shareText = `Check out this chat on Ellavox: "${session.lastMessage || 'New Ticket'}"`;
+        const shareText = `Check out this chat : "${session.lastMessage || 'New Ticket'}"`;
         const shareUrl = `${window.location.origin}/chat/${session._id}`;
 
         if (navigator.share) {
             navigator.share({
-                title: 'Ellavox Chat',
+                title: 'Chat',
                 text: shareText,
                 url: shareUrl
             }).catch(() => {});

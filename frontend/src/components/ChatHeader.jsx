@@ -12,7 +12,7 @@ const ChatHeader = ({ onMenuClick }) => {
                     <Menu className="w-6 h-6 text-text/60" />
                 </button>
                 <div className="flex flex-col">
-                    <h2 className="text-lg font-bold text-text mb-0">Ellavox AI Assistant</h2>
+                    <h2 className="text-lg font-bold text-text mb-0">AI Assistant</h2>
                     <div className="flex items-center gap-1.5">
                         <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
                         <span className="text-[10px] text-green-600 dark:text-green-400 uppercase font-bold tracking-widest">Active</span>

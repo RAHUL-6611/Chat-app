@@ -54,7 +54,5 @@ data/
 # Documentation
 *.md
 !README.md
-!DEPLOYMENT.md
-!CLEANUP_SUMMARY.md
 
 
