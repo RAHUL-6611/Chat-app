@@ -1,10 +1,10 @@
 import express from 'express';
 import { 
-    sendMessage, 
-    getHistory, 
-    deleteMessage, 
-    clearHistory,
-    getChatSessions 
+  sendMessage, 
+  getHistory, 
+  deleteMessage, 
+  clearHistory,
+  getChatSessions 
 } from '../controllers/chat.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { chatRateLimiter } from '../middleware/rateLimiter.js';

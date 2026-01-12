@@ -9,5 +9,5 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../../../.env') });
 
 if (!process.env.OPEN_ROUTER) {
-    console.warn('WARNING: OPEN_ROUTER key is missing in .env');
+  console.warn('WARNING: OPEN_ROUTER key is missing in .env');
 }
