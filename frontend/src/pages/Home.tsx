@@ -186,9 +186,9 @@ const Home = () => {
               </div>
             ) : null}
             
-            {messages.map((msg) => (
+            {messages.map((msg, index) => (
               <MessageItem 
-                key={msg._id || Math.random()} 
+                key={msg._id || index} 
                 message={msg} 
                 onDelete={deleteMessage}
               />

@@ -171,7 +171,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
             ];
           } else {
             // Unique stable ID for this specific streaming response
-            const uniqueStreamingId = `streaming-${Date.now()}`;
+            const uniqueStreamingId = `streaming-${crypto.randomUUID()}`;
             return [...prev, { 
               _id: uniqueStreamingId, 
               role: 'assistant' as const, 
@@ -239,7 +239,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
     }
 
     const tempUserMsg: Message = {
-      _id: 'temp-' + Date.now(),
+      _id: crypto.randomUUID(),
       content,
       role: 'user',
       chatId: activeChatId,
