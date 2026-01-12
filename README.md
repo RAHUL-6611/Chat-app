@@ -7,6 +7,10 @@ also learnt some new concepts from Ellavox and used it here.
 ---
 DIRECT ACCESS : https://chat-app-production-733a.up.railway.app/chat/xbk67nl7k
 
+https://github.com/user-attachments/assets/3187efdb-970b-410b-a781-89ca4eb6252e
+
+
+
 ##  Setup & Installation
 
 ### Environment Configuration
