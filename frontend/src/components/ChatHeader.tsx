@@ -6,7 +6,7 @@ interface ChatHeaderProps {
 
 const ChatHeader = ({ onMenuClick }: ChatHeaderProps) => {
   return (
-    <header className="h-16 flex items-center justify-between px-6 border-b border-border bg-surface/80 backdrop-blur-md sticky top-0 z-30">
+    <header className="h-16 flex items-center justify-between px-4 border-b border-border bg-surface/80 backdrop-blur-md sticky top-0 z-30">
       <div className="flex items-center gap-4">
         <button 
           className="lg:hidden p-2 hover:bg-text/5 rounded-lg transition-colors"

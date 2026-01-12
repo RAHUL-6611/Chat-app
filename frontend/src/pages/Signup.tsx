@@ -40,7 +40,6 @@ const Signup = () => {
             <UserPlus className="text-white w-8 h-8" />
           </div>
           <h1 className="text-3xl font-bold text-text mb-2">Create Account</h1>
-          <p className="text-text/70">Join the conversation today</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
