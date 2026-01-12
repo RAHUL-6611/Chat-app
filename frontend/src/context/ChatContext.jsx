@@ -13,6 +13,7 @@ export const ChatProvider = ({ children }) => {
     const [chatSessions, setChatSessions] = useState([]);
     const [currentChatId, setCurrentChatId] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [loadingHistory, setLoadingHistory] = useState(false);
     const [typingUser, setTypingUser] = useState(null);
     const [error, setError] = useState(null);
     const socketRef = useRef();
@@ -48,9 +49,11 @@ export const ChatProvider = ({ children }) => {
         // Prevent repeated fetches for the same ID within a short window
         if (!targetId || targetId === 'default' || targetId.startsWith('new-')) {
             setMessages([]);
+            setLoadingHistory(false);
             return;
         }
         
+        setLoadingHistory(true);
         try {
             console.log(`[ChatContext] Fetching history for: ${targetId} | Current ID: ${currentChatId}`);
             const res = await api.get(`/chat/history?chatId=${targetId}`);
@@ -65,6 +68,8 @@ export const ChatProvider = ({ children }) => {
             }
         } catch (err) {
             console.error('History fetch error:', err);
+        } finally {
+            setLoadingHistory(false);
         }
     }, [currentChatId]);
 
@@ -324,6 +329,7 @@ export const ChatProvider = ({ children }) => {
             messages: optimisticMessages, // Expose the optimistic version to the UI
             chatSessions,
             loading,
+            loadingHistory,
             typingUser,
             error,
             currentChatId,

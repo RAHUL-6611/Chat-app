@@ -23,7 +23,8 @@ const Home = () => {
         messages, 
         chatSessions,
         currentChatId,
-        loading, 
+        loading,
+        loadingHistory,
         sendMessage, 
         createNewChat,
         switchChat,
@@ -130,7 +131,20 @@ const Home = () => {
                 {/* Messages Area */}
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2 custom-scrollbar scroll-smooth">
                     <div className="max-w-4xl mx-auto w-full flex flex-col pt-4">
-                        {messages.length === 0 && !loading && (
+                        {/* Show loading skeleton when fetching history */}
+                        {loadingHistory && messages.length === 0 ? (
+                            <div className="flex w-full mb-6 animate-fade-in justify-start">
+                                <div className="flex gap-3 max-w-[85%] sm:max-w-[70%]">
+                                    <div className="w-9 h-9 rounded-xl bg-surface border border-border flex items-center justify-center shrink-0 animate-pulse">
+                                        <Bot className="w-5 h-5 text-primary" />
+                                    </div>
+                                    <div className="flex flex-col gap-2 flex-1">
+                                        <div className="h-4 bg-surface border border-border rounded-lg w-3/4 animate-pulse"></div>
+                                        <div className="h-4 bg-surface border border-border rounded-lg w-1/2 animate-pulse"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : messages.length === 0 && !loading ? (
                             <div className="h-full flex flex-col items-center justify-center text-center mt-32 animate-fade-in">
                                 {/* <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-primary/10 border border-primary/20">
                                     <Bot className="w-10 h-10 text-primary" />
@@ -157,7 +171,7 @@ const Home = () => {
                                     ))}
                                 </div>
                             </div>
-                        )}
+                        ) : null}
                         
                         {messages.map((msg) => (
                             <MessageItem 

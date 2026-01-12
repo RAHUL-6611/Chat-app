@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Cpu, Sparkles, Loader2 } from 'lucide-react';
+import { Cpu, Sparkles } from 'lucide-react';
 
 const steps = [
     'Scanning operational signals...',
@@ -29,29 +29,20 @@ const ChainOfThought = () => {
                     <div className="px-5 py-4 rounded-2xl bg-surface border border-border text-text rounded-tl-none shadow-premium relative min-w-[280px] overflow-hidden">
                         {/* Title Header */}
                         <div className="flex items-center gap-2 mb-3">
-                            <div className="flex gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]"></span>
-                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]"></span>
-                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce"></span>
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">Ellavox AI Worker</span>
+                            <Sparkles className="w-4 h-4 text-primary" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">Processing</span>
                         </div>
 
-                        {/* Current Step */}
-                        <div className="flex items-center gap-3 relative z-10 transition-all duration-500">
-                            <div className="p-2 rounded-lg bg-primary/5 text-primary shadow-sm">
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                            </div>
-                            <div className="flex flex-col flex-1">
-                                <span className="text-[13px] font-semibold text-text leading-tight">
-                                    {steps[stepIndex]}
-                                </span>
-                                <div className="h-1 w-full bg-primary/10 mt-2 rounded-full overflow-hidden">
-                                    <div 
-                                        className="h-full bg-primary transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(139,92,246,0.5)]" 
-                                        style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
-                                    />
-                                </div>
+                        {/* Current Step with Progress Bar */}
+                        <div className="flex flex-col gap-2 relative z-10">
+                            <span className="text-[13px] font-semibold text-text leading-tight">
+                                {steps[stepIndex]}
+                            </span>
+                            <div className="h-1 w-full bg-primary/10 rounded-full overflow-hidden">
+                                <div 
+                                    className="h-full bg-primary transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(139,92,246,0.5)]" 
+                                    style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
+                                />
                             </div>
                         </div>
 

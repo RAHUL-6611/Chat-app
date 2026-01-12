@@ -7,27 +7,9 @@ const MessageItem = ({ message, onDelete }) => {
     const isUser = message.role === 'user';
     const [copied, setCopied] = useState(false);
     
-    // Improved typewriter effect state management
-    const [displayedContent, setDisplayedContent] = useState(() => {
-        return (isUser || !message.shouldAnimate || message.isError) ? message.content : '';
-    });
-
-    useEffect(() => {
-        if (!isUser && message.shouldAnimate && !message.isError) {
-            if (displayedContent.length < message.content.length) {
-                const charDiff = message.content.length - displayedContent.length;
-                // Speed up for longer backlogs
-                const charsToAdd = charDiff > 50 ? 5 : 1; 
-                
-                const timeout = setTimeout(() => {
-                    setDisplayedContent(message.content.slice(0, displayedContent.length + charsToAdd));
-                }, 15);
-                return () => clearTimeout(timeout);
-            }
-        } else {
-            setDisplayedContent(message.content);
-        }
-    }, [message.content, displayedContent, isUser, message.shouldAnimate, message.isError]);
+    // No artificial typewriter effect - the server is already streaming the content
+    // We just display it as it arrives
+    const displayedContent = message.content;
 
     const handleCopy = () => {
         navigator.clipboard.writeText(message.content);
@@ -58,7 +40,7 @@ const MessageItem = ({ message, onDelete }) => {
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                 {displayedContent}
                             </ReactMarkdown>
-                            {(isStreaming || displayedContent.length < message.content.length) && (
+                            {isStreaming && (
                                 <span className="inline-block w-1.5 h-4 ml-1 bg-primary animate-pulse align-middle" />
                             )}
                         </div>
