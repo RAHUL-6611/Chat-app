@@ -105,7 +105,6 @@ sequenceDiagram
    - Server fetches chat history (Dual-layer caching).
    - Rotating model selection (Round-robin) avoids OpenRouter rate limits.
    - Response is streamed character-by-character back to the client via WebSockets.
-4. **Resilience**: The **ASH (Autonomous Self-Healing)** philosophy ensures messages are queued locally if the socket disconnects and synced upon restoration.
 
 ---
 
