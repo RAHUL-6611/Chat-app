@@ -21,6 +21,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [typingUser, setTypingUser] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const currentChatIdRef = useRef<string | null>(currentChatId);
 
@@ -79,6 +80,17 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
 
     socketRef.current = io(SOCKET_URL, {
       withCredentials: true,
+    });
+
+    socketRef.current.on('connect', () => {
+      console.log('Socket Connected');
+      setIsConnected(true);
+      setError(null);
+    });
+
+    socketRef.current.on('disconnect', () => {
+      console.log('Socket Disconnected');
+      setIsConnected(false);
     });
 
     socketRef.current.on('typing', (data: { userId: string; username: string }) => {
@@ -211,16 +223,41 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
     }
   }, [user, currentChatId, fetchHistory]);
 
+  // ASH: Process Offline Queue when connection is restored
+  useEffect(() => {
+    if (isConnected && offlineQueue.length > 0 && socketRef.current) {
+      console.log(`ASH: Syncing ${offlineQueue.length} offline messages...`);
+      
+      offlineQueue.forEach(msg => {
+        socketRef.current?.emit('send_message', { 
+          content: msg.content, 
+          chatId: msg.chatId 
+        });
+      });
+
+      setOfflineQueue([]);
+      // Clear storage explicitly
+      if (user) {
+        localStorage.removeItem(`offline_msgs_${user._id}`);
+      }
+    }
+  }, [isConnected, offlineQueue, user]);
+
   useEffect(() => {
     if (user) {
       localStorage.setItem(`offline_msgs_${user._id}`, JSON.stringify(offlineQueue));
     }
   }, [offlineQueue, user]);
 
-  // React 19 useOptimistic Hook
+  // React 19 useOptimistic Hook with Sorting to fix Race Conditions
   const [optimisticMessages, addOptimisticMessage] = useOptimistic(
     messages,
-    (state, newMessage: Message) => [...state, newMessage]
+    (state, newMessage: Message) => {
+      const merged = [...state, newMessage];
+      // STRICT ORDERING: Sort by createdAt ensures optimistic user message (T) 
+      // always appears before AI response (T+1), even if AI response arrived in state first.
+      return merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    }
   );
 
   const sendMessage = (content: string) => {
@@ -258,9 +295,9 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
         chatId: activeChatId 
       });
     } else {
-      // Error handling remains ...
-      setError("Connection lost. Please try again.");
-      setLoading(false);
+      // ASH Strategy: Queue locally if offline
+      console.warn("Socket disconnected. Queuing message locally (ASH).");
+      setOfflineQueue(prev => [...prev, tempUserMsg]);
     }
   };
 

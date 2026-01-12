@@ -61,7 +61,7 @@ const Sidebar = ({
     `}>
       <div className="h-full flex flex-col p-4">
         <div className="flex items-center justify-between lg:hidden mb-4">
-          <span className="font-bold text-primary">Ellavox</span>
+          <span className="font-bold text-primary"></span>
           <button onClick={() => setSidebarOpen(false)}>
             <X className="w-5 h-5 text-text/60" />
           </button>
