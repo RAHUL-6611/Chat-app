@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
     Plus, 
     MessageSquare, 
     Trash2, 
     User, 
     LogOut,
-    X
+    X,
+    Share2
 } from 'lucide-react';
+import Modal from './Modal';
 
 const Sidebar = ({ 
     sidebarOpen, 
@@ -19,6 +21,25 @@ const Sidebar = ({
     user, 
     logout 
 }) => {
+    const [showClearModal, setShowClearModal] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
+
+    const handleShare = (e, session) => {
+        e.stopPropagation(); // Don't switch chat
+        const shareText = `Check out this chat on Ellavox: "${session.lastMessage || 'New Ticket'}"`;
+        const shareUrl = `${window.location.origin}/chat/${session._id}`;
+
+        if (navigator.share) {
+            navigator.share({
+                title: 'Ellavox Chat',
+                text: shareText,
+                url: shareUrl
+            }).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(`${shareText} - ${shareUrl}`);
+            setShowShareModal(true);
+        }
+    };
     return (
         <aside className={`
             fixed lg:static inset-y-0 left-0 w-72 bg-surface border-r border-border z-50 transform transition-transform duration-300 lg:translate-x-0
@@ -34,19 +55,40 @@ const Sidebar = ({
 
                 <button 
                     onClick={createNewChat}
-                    className="flex items-center gap-3 w-full p-3 mb-6 bg-primary text-white rounded-xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 font-medium active:scale-[0.98]"
+                    className="flex items-center gap-3 w-full p-3 mb-6 bg-primary/10 border border-primary/20 text-primary rounded-xl hover:bg-primary hover:text-white transition-all duration-300 font-semibold active:scale-[0.98] group"
                 >
-                    <Plus className="w-5 h-5" />
+                    <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                        <Plus className="w-5 h-5" />
+                    </div>
                     New Chat
                 </button>
 
                 <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar">
                     <div className="flex items-center justify-between px-2 mb-2">
                         <span className="text-xs font-semibold text-text/40 uppercase tracking-wider">Recent Tickets</span>
-                        <button onClick={clearHistory} className="p-1 hover:text-red-500 transition-colors text-text/40" title="Delete All Data">
+                        <button onClick={() => setShowClearModal(true)} className="p-1 hover:text-red-500 transition-colors text-text/40" title="Delete All Data">
                             <Trash2 className="w-3.5 h-3.5" />
                         </button>
                     </div>
+
+                    <Modal 
+                        isOpen={showClearModal}
+                        onClose={() => setShowClearModal(false)}
+                        onConfirm={clearHistory}
+                        title="Clear Chat History"
+                        message="Are you sure you want to delete all your conversations? This action cannot be undone."
+                        confirmText="Yes, Clear All"
+                        type="confirm"
+                    />
+
+                    <Modal 
+                        isOpen={showShareModal}
+                        onClose={() => setShowShareModal(false)}
+                        title="Chat Link Copied!"
+                        message="The link to this conversation has been copied to your clipboard."
+                        confirmText="Got it"
+                        type="success"
+                    />
                     
                     {chatSessions.length === 0 ? (
                         <div className="px-3 py-4 text-center">
@@ -72,6 +114,14 @@ const Sidebar = ({
                                         {new Date(session.lastTimestamp).toLocaleDateString()}
                                     </div>
                                 </div>
+                                
+                                <button 
+                                    onClick={(e) => handleShare(e, session)}
+                                    className="p-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity hover:text-primary"
+                                    title="Share Chat"
+                                >
+                                    <Share2 className="w-3.5 h-3.5" />
+                                </button>
                             </div>
                         ))
                     )}
@@ -88,8 +138,13 @@ const Sidebar = ({
                             <span className="text-[10px] text-green-500 font-bold uppercase tracking-tighter">Online</span>
                         </div>
                     </div>
-                    <button onClick={logout} className="flex items-center gap-3 w-full p-3 text-text/60 hover:text-red-500 hover:bg-red-500/5 rounded-xl transition-all text-sm font-medium">
-                        <LogOut className="w-5 h-5" />
+                    <button 
+                        onClick={logout} 
+                        className="flex items-center gap-3 w-full p-3 text-text/40 hover:text-red-500 hover:bg-red-500/5 rounded-xl transition-all duration-300 text-sm font-semibold group"
+                    >
+                        <div className="w-8 h-8 rounded-lg bg-text/5 flex items-center justify-center group-hover:bg-red-500/10 transition-colors">
+                            <LogOut className="w-4 h-4" />
+                        </div>
                         Sign Out
                     </button>
                 </div>

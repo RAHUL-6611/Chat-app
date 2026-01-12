@@ -26,6 +26,14 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
+              <Route 
+                path="/chat/:id" 
+                element={
+                  <ProtectedRoute>
+                    <Home />
+                  </ProtectedRoute>
+                } 
+              />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Router>

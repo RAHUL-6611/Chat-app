@@ -53,7 +53,7 @@ const Signup = () => {
                                 placeholder="Username"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
-                                className="input-field pl-11"
+                                className="input-field pl-12"
                                 required
                             />
                         </div>
@@ -65,7 +65,7 @@ const Signup = () => {
                                 placeholder="Email Address"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="input-field pl-11"
+                                className="input-field pl-12"
                                 required
                             />
                         </div>
@@ -77,7 +77,7 @@ const Signup = () => {
                                 placeholder="Password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="input-field pl-11"
+                                className="input-field pl-12"
                                 required
                                 minLength={6}
                             />

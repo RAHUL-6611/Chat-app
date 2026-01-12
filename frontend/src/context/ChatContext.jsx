@@ -46,9 +46,14 @@ export const ChatProvider = ({ children }) => {
     }, []);
 
     const fetchHistory = useCallback(async (chatId) => {
+        const targetId = chatId || currentChatId;
+        if (!targetId || targetId === 'default' || targetId.startsWith('new-')) {
+            setMessages([]);
+            return;
+        }
         try {
-            const res = await api.get(`/chat/history?chatId=${chatId || currentChatId}`);
-            const localForThisChat = offlineQueue.filter(m => m.chatId === (chatId || currentChatId));
+            const res = await api.get(`/chat/history?chatId=${targetId}`);
+            const localForThisChat = offlineQueue.filter(m => m.chatId === targetId);
             setMessages([...res.data, ...localForThisChat]);
         } catch (err) {
             console.error('History fetch error:', err);
@@ -150,12 +155,22 @@ export const ChatProvider = ({ children }) => {
         setLoading(true);
         setError(null);
 
+        // Generate a new ID if we are in "New Chat" mode (null ID)
+        let activeChatId = currentChatId;
+        if (!activeChatId) {
+            activeChatId = Math.random().toString(36).substring(2, 11);
+            setCurrentChatId(activeChatId);
+            if (user) {
+                localStorage.setItem(`lastChatId_${user._id}`, activeChatId);
+            }
+        }
+
         const tempId = 'temp-' + Date.now();
         const tempUserMsg = {
             _id: tempId,
             content,
             role: 'user',
-            chatId: currentChatId,
+            chatId: activeChatId,
             createdAt: new Date().toISOString()
         };
 
@@ -165,7 +180,7 @@ export const ChatProvider = ({ children }) => {
         if (socketRef.current && socketRef.current.connected) {
             socketRef.current.emit('send_message', { 
                 content, 
-                chatId: currentChatId 
+                chatId: activeChatId 
             });
         } else {
             // Mark as offline if we can't send
@@ -177,22 +192,20 @@ export const ChatProvider = ({ children }) => {
         }
     };
 
-    const createNewChat = () => {
-        const newId = Math.random().toString(36).substring(2, 11);
-        setCurrentChatId(newId);
+    const createNewChat = useCallback(() => {
+        setCurrentChatId(null);
         setMessages([]);
         if (user) {
-            localStorage.setItem(`lastChatId_${user._id}`, newId);
+            localStorage.removeItem(`lastChatId_${user._id}`);
         }
-        fetchSessions();
-    };
+    }, [user]);
 
-    const switchChat = (chatId) => {
+    const switchChat = useCallback((chatId) => {
         setCurrentChatId(chatId);
         if (user) {
             localStorage.setItem(`lastChatId_${user._id}`, chatId);
         }
-    };
+    }, [user]);
 
     const deleteMessage = async (id) => {
         const msg = messages.find(m => m._id === id);
@@ -213,17 +226,15 @@ export const ChatProvider = ({ children }) => {
     };
 
     const clearHistory = async () => {
-        if (window.confirm('Are you sure you want to clear all chat history?')) {
-            try {
-                await api.delete('/chat/history');
-                setMessages([]);
-                setChatSessions([]);
-                setOfflineQueue([]);
-                localStorage.removeItem(`offline_msgs_${user._id}`);
-                createNewChat();
-            } catch (err) {
-                console.error('Clear error:', err);
-            }
+        try {
+            await api.delete('/chat/history');
+            setMessages([]);
+            setChatSessions([]);
+            setOfflineQueue([]);
+            localStorage.removeItem(`offline_msgs_${user._id}`);
+            createNewChat();
+        } catch (err) {
+            console.error('Clear error:', err);
         }
     };
 

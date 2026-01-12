@@ -57,9 +57,6 @@ const ChatInput = ({ onSendMessage, startTyping, stopTyping, loading }) => {
                         </button>
                     </div>
                 </form>
-                <p className="text-[10px] text-text/30 text-center mt-3 tracking-wide">
-                    Ellavox operational AI is powered by COMPASS. Responses are generated for business intelligence.
-                </p>
             </div>
         </div>
     );

@@ -1,8 +1,5 @@
 import Message from '../models/Message.js';
 import OpenAI from 'openai';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const openai = new OpenAI({
     baseURL: 'https://openrouter.ai/api/v1',
@@ -15,11 +12,11 @@ const openai = new OpenAI({
 
 // List of free models to rotate between to mitigate rate limits
 const FREE_MODELS = [
-    "allenai/olmo-3.1-32b-instruct",
     'google/gemini-2.0-flash-exp:free',
-    'meta-llama/llama-3.1-8b-instruct:free',
+    'meta-llama/llama-3-8b-instruct:free',
     'mistralai/mistral-7b-instruct:free',
     'microsoft/phi-3-mini-128k-instruct:free',
+    'openchat/openchat-7b:free',
     'allenai/olmo-7b-instruct:free'
 ];
 
@@ -93,7 +90,7 @@ const SYSTEM_PROMPT = {
     - Focus on "Business Results" and "Actionable Outcomes".
     - Use technical terms like "COMPASS", "ASH", "Agentic AI", and "Operational Intelligence" where appropriate.
     - Maintain a tone that is highly efficient, professional, and results-oriented.
-    - KEEP YOUR RESPONSES RELEVANT AND BELOW 50 WORDS AT ALL TIMES.
+    - KEEP YOUR RESPONSES RELEVANT AND BELOW 150 WORDS AT ALL TIMES.
     - If asked who you are, state that you are an Ellavox AI Worker powered by the COMPASS and ASH systems.`
 };
 
@@ -115,45 +112,55 @@ export const processMessageLogic = async ({ content, chatId, user, io }) => {
     // Update Cache synchronously
     updateCache(targetChatId, userMessage);
 
-    // Pick next model in rotation
-    const selectedModel = FREE_MODELS[modelIndex];
-    console.log(`Using model: ${selectedModel} (Context: ${messageHistory.length} turns)`);
-    modelIndex = (modelIndex + 1) % FREE_MODELS.length;
-
     let fullAiResponse = '';
-    let streamSuccessful = true;
+    let streamSuccessful = false;
 
-    // 3. Start Streaming AI Response via OpenRouter
-    try {
-        const stream = await openai.chat.completions.create({
-            model: selectedModel,
-            messages: [
-                SYSTEM_PROMPT,
-                ...messageHistory,
-                { role: 'user', content }
-            ],
-            stream: true,
-        });
+    // 3. Start Streaming AI Response via OpenRouter (with 1 retry)
+    let retryCount = 0;
+    const maxRetries = 1;
 
-        for await (const chunk of stream) {
-            const chunkContent = chunk.choices[0]?.delta?.content || '';
-            if (chunkContent) {
-                fullAiResponse += chunkContent;
-                io.emit(`chat_chunk_${user._id}`, { content: chunkContent, finished: false });
+    while (retryCount <= maxRetries) {
+        const selectedModel = FREE_MODELS[modelIndex];
+        console.log(`Attempt ${retryCount + 1}: Using model: ${selectedModel} (Context: ${messageHistory.length} turns)`);
+        modelIndex = (modelIndex + 1) % FREE_MODELS.length;
+
+        try {
+            const stream = await openai.chat.completions.create({
+                model: selectedModel,
+                messages: [
+                    SYSTEM_PROMPT,
+                    ...messageHistory,
+                    { role: 'user', content }
+                ],
+                stream: true,
+            });
+
+            for await (const chunk of stream) {
+                const chunkContent = chunk.choices[0]?.delta?.content || '';
+                if (chunkContent) {
+                    fullAiResponse += chunkContent;
+                    io.emit(`chat_chunk_${user._id}`, { content: chunkContent, finished: false });
+                }
+            }
+            streamSuccessful = true;
+            break; // Success, exit retry loop
+        } catch (streamError) {
+            console.error(`Attempt ${retryCount + 1} Failed (${selectedModel}):`, streamError.message);
+            retryCount++;
+            
+            if (retryCount > maxRetries) {
+                streamSuccessful = false;
+                const genericMessage = "I'm having trouble generating a response right now. Please try again soon.";
+                
+                io.emit(`chat_chunk_${user._id}`, { 
+                    finished: true,
+                    error: true,
+                    fallbackContent: fullAiResponse || genericMessage
+                });
+                
+                fullAiResponse += `\n\n[Issue: Service unavailable after ${retryCount} attempts]`;
             }
         }
-    } catch (streamError) {
-        console.error('Inner Stream Error:', streamError);
-        streamSuccessful = false;
-        const genericMessage = "I'm having trouble generating a response right now. Please try again soon.";
-        
-        io.emit(`chat_chunk_${user._id}`, { 
-            finished: true,
-            error: true,
-            fallbackContent: fullAiResponse || genericMessage
-        });
-        
-        fullAiResponse += `\n\n[Issue: ${genericMessage}]`;
     }
 
     // 4. Save AI Message once stream is finished or partially finished

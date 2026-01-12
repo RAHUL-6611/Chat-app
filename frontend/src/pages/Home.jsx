@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
 import { 
@@ -16,6 +17,8 @@ import ChatInput from '../components/ChatInput';
 
 const Home = () => {
     const { user, logout } = useAuth();
+    const { id } = useParams();
+    const navigate = useNavigate();
     const { 
         messages, 
         chatSessions,
@@ -42,6 +45,35 @@ const Home = () => {
         scrollToBottom();
     }, [messages, typingUser, loading]);
 
+    // 1. URL -> State: Sync context when user navigates via browser/URL
+    useEffect(() => {
+        if (id && id !== currentChatId) {
+            switchChat(id);
+        } else if (!id && currentChatId) {
+            // Intentional navigation to root / should clear the current chat
+            switchChat(null);
+        }
+    }, [id, switchChat]);
+
+    // 2. State -> URL: Sync URL when state changes (e.g. from Sidebar or starting a new session)
+    useEffect(() => {
+        if (currentChatId) {
+            if (id !== currentChatId) {
+                navigate(`/chat/${currentChatId}`, { replace: true });
+            }
+        } else if (id) {
+            // currentChatId is null but URL has an ID, handled by Effect 1
+            // but just in case we are at /, navigate ensures it stays at /
+            navigate('/', { replace: true });
+        }
+    }, [currentChatId, id, navigate]);
+
+    // Wrapper for New Chat button
+    const handleNewChat = () => {
+        navigate('/', { replace: true }); // Move to root first
+        createNewChat(); // Then reset context
+    };
+
     const isAssistantStreaming = messages.length > 0 && 
         messages[messages.length - 1].role === 'assistant' && 
         (messages[messages.length - 1].isStreaming || messages[messages.length - 1]._id.toString().startsWith('streaming-'));
@@ -66,7 +98,7 @@ const Home = () => {
             <Sidebar 
                 sidebarOpen={sidebarOpen}
                 setSidebarOpen={setSidebarOpen}
-                createNewChat={createNewChat}
+                createNewChat={handleNewChat}
                 chatSessions={chatSessions}
                 currentChatId={currentChatId}
                 switchChat={switchChat}
@@ -83,14 +115,14 @@ const Home = () => {
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2 custom-scrollbar scroll-smooth">
                     <div className="max-w-4xl mx-auto w-full flex flex-col pt-4">
                         {messages.length === 0 && (
-                            <div className="h-full flex flex-col items-center justify-center text-center mt-12 animate-fade-in">
-                                <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-primary/10 border border-primary/20">
+                            <div className="h-full flex flex-col items-center justify-center text-center mt-32 animate-fade-in">
+                                {/* <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-primary/10 border border-primary/20">
                                     <Bot className="w-10 h-10 text-primary" />
-                                </div>
-                                <h1 className="text-3xl font-bold text-text mb-3">Welcome to Ellavox</h1>
-                                <p className="text-text/50 max-w-md mx-auto leading-relaxed mb-10">
+                                </div> */}
+                                <h1 className="text-3xl font-bold text-text mb-8">Welcome!</h1>
+                                {/* <p className="text-text/50 max-w-md mx-auto leading-relaxed mb-10">
                                     I am your Agentic AI Worker. Use the suggestions below to explore my operational capabilities.
-                                </p>
+                                </p> */}
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl px-4">
                                     {suggestions.map((suggestion, index) => (
