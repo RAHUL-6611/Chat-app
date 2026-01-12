@@ -65,14 +65,13 @@ io.on('connection', (socket) => {
         if (!content) return;
 
         try {
-            const { userMessage } = await processMessageLogic({
+            await processMessageLogic({
                 content,
                 chatId,
                 user: socket.user,
-                io
+                io,
+                socket // Pass socket for immediate user message confirmation
             });
-            // Send confirmation back to the sender
-            socket.emit('message_received', { userMessage });
         } catch (error) {
             console.error('Socket Send Error:', error);
             socket.emit('error', { message: 'Failed to send message' });

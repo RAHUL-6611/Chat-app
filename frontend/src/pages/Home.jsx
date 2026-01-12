@@ -96,10 +96,10 @@ const Home = () => {
         (messages[messages.length - 1].isStreaming || messages[messages.length - 1]._id.toString().startsWith('streaming-'));
 
     const suggestions = [
-        { icon: Bot, text: "I need to track my pending order" },
-        { icon: MessageSquare, text: "What is your return policy?" },
-        { icon: Plus, text: "How do I reset my account password?" },
-        { icon: History, text: "I have a question about my billing" }
+        { icon: Bot, text: "How can AI help my logistics business?" },
+        { icon: MessageSquare, text: "What does Ellavox do for real estate?" },
+        { icon: Plus, text: "Can you handle customer calls 24/7?" },
+        { icon: History, text: "How do I get started with Ellavox?" }
     ];
 
     return (

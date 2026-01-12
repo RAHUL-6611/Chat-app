@@ -5,7 +5,7 @@ import { useAuth } from './AuthContext';
 
 const ChatContext = createContext();
 
-const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const SOCKET_URL = import.meta.env.VITE_API_URL || (import.meta.env.MODE === 'production' ? window.location.origin : 'http://localhost:5001');
 
 export const ChatProvider = ({ children }) => {
     const { user } = useAuth();
@@ -105,6 +105,7 @@ export const ChatProvider = ({ children }) => {
                 });
             });
 
+
             socketRef.current.on(`chat_chunk_${user._id}`, (data) => {
                 if (data.finished) {
                     if (data.error && data.fallbackContent) {
@@ -147,6 +148,14 @@ export const ChatProvider = ({ children }) => {
                     fetchSessions();
                 } else {
                     setMessages(prev => {
+                        // SAFETY CHECK: Only start streaming if we have at least one user message
+                        // This prevents AI response from appearing before user message in rare race conditions
+                        const hasUserMessage = prev.some(m => m.role === 'user');
+                        if (!hasUserMessage) {
+                            console.warn('Received AI chunk before user message - buffering');
+                            return prev;
+                        }
+
                         const last = prev[prev.length - 1];
                         if (last && last.role === 'assistant' && (last.isStreaming || last._id.startsWith('streaming-'))) {
                             return [
@@ -167,6 +176,7 @@ export const ChatProvider = ({ children }) => {
                     });
                 }
             });
+
 
             return () => {
                 socketRef.current.disconnect();
