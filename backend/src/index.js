@@ -99,11 +99,15 @@ app.set('io', io);
 app.use('/auth', authRoutes);
 app.use('/chat', chatRoutes);
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Static files for production
 if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.join(__dirname, '../public')));
     
-    app.get('*all', (req, res) => {
+    // Catch-all route for SPA - must be last
+    app.use((req, res) => {
         res.sendFile(path.resolve(__dirname, '../public', 'index.html'));
     });
 } else {

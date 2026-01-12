@@ -55,16 +55,12 @@ export const ChatProvider = ({ children }) => {
         
         setLoadingHistory(true);
         try {
-            console.log(`[ChatContext] Fetching history for: ${targetId} | Current ID: ${currentChatId}`);
             const res = await api.get(`/chat/history?chatId=${targetId}`);
             
             // Stale Check: Ensure we generally only update if we are still on the same chat ID
             // or if we were fetching specifically for the current ID.
             if (targetId === currentChatIdRef.current) {
-                console.log(`[ChatContext] History updated for ${targetId}. Count: ${res.data.length}`);
                 setMessages(res.data);
-            } else {
-                console.warn(`[ChatContext] Stale history fetch ignored. Fetched: ${targetId}, Current (Ref): ${currentChatIdRef.current}`);
             }
         } catch (err) {
             console.error('History fetch error:', err);
@@ -193,7 +189,6 @@ export const ChatProvider = ({ children }) => {
             } else {
                 // FORCE RESET: Distinctly clear messages when entering "New Chat"
                 // This clean slate is critical for useOptimistic to reset its base
-                console.log('[ChatContext] ENTERING NEW CHAT - FORCING RESET');
                 setMessages([]);
             }
         }
@@ -234,8 +229,6 @@ export const ChatProvider = ({ children }) => {
             createdAt: new Date().toISOString(),
             isOptimistic: true 
         };
-
-        console.log('[ChatContext] Optimization: Adding temp message', tempUserMsg);
         
         // 1. Optimistic Update (Instant feedback) - WRAPPED IN TRANSITION for React 19
         startTransition(() => {
@@ -268,7 +261,6 @@ export const ChatProvider = ({ children }) => {
     }, [user]);
 
     const switchChat = useCallback((chatId) => {
-        console.log(`[ChatContext] switchChat called with: ${chatId}`);
         // Prevent setting the state to common error strings
         if (chatId === 'null' || chatId === 'undefined') {
             setCurrentChatId(null);
