@@ -5,6 +5,8 @@ I have used the similar Knowledge base to mimic similar customer support experie
 also learnt some new concepts from Ellavox and used it here.
 
 ---
+DIRECT ACCESS : https://chat-app-production-733a.up.railway.app/chat/xbk67nl7k
+
 ##  Setup & Installation
 
 ### Environment Configuration
