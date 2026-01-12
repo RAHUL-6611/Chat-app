@@ -12,12 +12,14 @@ const openai = new OpenAI({
 
 // List of free models to rotate between to mitigate rate limits
 const FREE_MODELS = [
-    'google/gemini-2.0-flash-exp:free',
-    'meta-llama/llama-3-8b-instruct:free',
-    'mistralai/mistral-7b-instruct:free',
-    'microsoft/phi-3-mini-128k-instruct:free',
-    'openchat/openchat-7b:free',
-    'allenai/olmo-7b-instruct:free'
+    'xiaomi/mimo-v2-flash:free',
+    'nvidia/nemotron-3-nano-30b-a3b:free',
+    'mistralai/devstral-2512:free',
+    'arcee-ai/trinity-mini:free',
+    'nvidia/nemotron-nano-9b-v2:free',
+    'google/gemini-flash-1.5-8b-exp:free',
+    'meta-llama/llama-3.1-8b-instruct:free',
+    'qwen/qwen-2.5-72b-instruct:free'
 ];
 
 let modelIndex = 0;
@@ -124,6 +126,9 @@ export const processMessageLogic = async ({ content, chatId, user, io }) => {
         console.log(`Attempt ${retryCount + 1}: Using model: ${selectedModel} (Context: ${messageHistory.length} turns)`);
         modelIndex = (modelIndex + 1) % FREE_MODELS.length;
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
         try {
             const stream = await openai.chat.completions.create({
                 model: selectedModel,
@@ -133,7 +138,7 @@ export const processMessageLogic = async ({ content, chatId, user, io }) => {
                     { role: 'user', content }
                 ],
                 stream: true,
-            });
+            }, { signal: controller.signal });
 
             for await (const chunk of stream) {
                 const chunkContent = chunk.choices[0]?.delta?.content || '';
@@ -142,15 +147,20 @@ export const processMessageLogic = async ({ content, chatId, user, io }) => {
                     io.emit(`chat_chunk_${user._id}`, { content: chunkContent, finished: false });
                 }
             }
+            clearTimeout(timeoutId);
             streamSuccessful = true;
             break; // Success, exit retry loop
         } catch (streamError) {
-            console.error(`Attempt ${retryCount + 1} Failed (${selectedModel}):`, streamError.message);
+            clearTimeout(timeoutId);
+            const isTimeout = streamError.name === 'AbortError';
+            console.error(`Attempt ${retryCount + 1} Failed (${selectedModel}):`, isTimeout ? 'TIMEOUT (15s)' : streamError.message);
             retryCount++;
             
             if (retryCount > maxRetries) {
                 streamSuccessful = false;
-                const genericMessage = "I'm having trouble generating a response right now. Please try again soon.";
+                const genericMessage = isTimeout 
+                    ? "The AI is taking too long to respond. Please try again in a moment."
+                    : "I'm having trouble generating a response right now. Please try again soon.";
                 
                 io.emit(`chat_chunk_${user._id}`, { 
                     finished: true,
@@ -159,6 +169,9 @@ export const processMessageLogic = async ({ content, chatId, user, io }) => {
                 });
                 
                 fullAiResponse += `\n\n[Issue: Service unavailable after ${retryCount} attempts]`;
+            } else {
+                // Add a small delay before retry to mitigate rate limit ripples
+                await new Promise(resolve => setTimeout(resolve, 500));
             }
         }
     }

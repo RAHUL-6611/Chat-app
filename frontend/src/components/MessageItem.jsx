@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { User, Bot, Trash2, Copy, Check } from 'lucide-react';
+import { User, Bot, Copy, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import Modal from './Modal';
 
 const MessageItem = ({ message, onDelete }) => {
     const isUser = message.role === 'user';
     const [copied, setCopied] = useState(false);
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
     
     // Improved typewriter effect state management
     const [displayedContent, setDisplayedContent] = useState(() => {
@@ -69,21 +67,8 @@ const MessageItem = ({ message, onDelete }) => {
                             <button onClick={handleCopy} className="p-2 bg-surface border border-border rounded-lg hover:text-primary transition-colors text-text/50" title="Copy">
                                 {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                             </button>
-                            <button onClick={() => setShowDeleteModal(true)} className="p-2 bg-surface border border-border rounded-lg hover:text-red-500 transition-colors text-text/50" title="Delete">
-                                <Trash2 className="w-4 h-4" />
-                            </button>
                         </div>
                     </div>
-
-                    <Modal 
-                        isOpen={showDeleteModal}
-                        onClose={() => setShowDeleteModal(false)}
-                        onConfirm={() => onDelete(message._id)}
-                        title="Delete Message"
-                        message="Are you sure you want to delete this message? This action cannot be undone."
-                        confirmText="Delete"
-                        type="confirm"
-                    />
 
                     <span className="text-[11px] text-text/40 px-1">
                         {new Date(message.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

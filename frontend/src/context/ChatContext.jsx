@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, use, useState, useEffect, useCallback, useRef, useOptimistic, startTransition } from 'react';
 import io from 'socket.io-client';
 import api from '../api/api';
 import { useAuth } from './AuthContext';
@@ -11,17 +11,17 @@ export const ChatProvider = ({ children }) => {
     const { user } = useAuth();
     const [messages, setMessages] = useState([]);
     const [chatSessions, setChatSessions] = useState([]);
-    const [currentChatId, setCurrentChatId] = useState(() => {
-        const globalId = localStorage.getItem('currentChatId') || 'default';
-        if (user) {
-            return localStorage.getItem(`lastChatId_${user._id}`) || globalId;
-        }
-        return globalId;
-    });
+    const [currentChatId, setCurrentChatId] = useState(null);
     const [loading, setLoading] = useState(false);
     const [typingUser, setTypingUser] = useState(null);
     const [error, setError] = useState(null);
     const socketRef = useRef();
+    const currentChatIdRef = useRef(currentChatId);
+
+    // Sync ref with state
+    useEffect(() => {
+        currentChatIdRef.current = currentChatId;
+    }, [currentChatId]);
 
     // Local Storage Fallback for offline/failed messages
     const [offlineQueue, setOfflineQueue] = useState([]);
@@ -30,9 +30,6 @@ export const ChatProvider = ({ children }) => {
         if (user) {
             const saved = localStorage.getItem(`offline_msgs_${user._id}`);
             if (saved) setOfflineQueue(JSON.parse(saved));
-            
-            const lastId = localStorage.getItem(`lastChatId_${user._id}`);
-            if (lastId) setCurrentChatId(lastId);
         }
     }, [user]);
 
@@ -47,18 +44,29 @@ export const ChatProvider = ({ children }) => {
 
     const fetchHistory = useCallback(async (chatId) => {
         const targetId = chatId || currentChatId;
+        
+        // Prevent repeated fetches for the same ID within a short window
         if (!targetId || targetId === 'default' || targetId.startsWith('new-')) {
             setMessages([]);
             return;
         }
+        
         try {
+            console.log(`[ChatContext] Fetching history for: ${targetId} | Current ID: ${currentChatId}`);
             const res = await api.get(`/chat/history?chatId=${targetId}`);
-            const localForThisChat = offlineQueue.filter(m => m.chatId === targetId);
-            setMessages([...res.data, ...localForThisChat]);
+            
+            // Stale Check: Ensure we generally only update if we are still on the same chat ID
+            // or if we were fetching specifically for the current ID.
+            if (targetId === currentChatIdRef.current) {
+                console.log(`[ChatContext] History updated for ${targetId}. Count: ${res.data.length}`);
+                setMessages(res.data);
+            } else {
+                console.warn(`[ChatContext] Stale history fetch ignored. Fetched: ${targetId}, Current (Ref): ${currentChatIdRef.current}`);
+            }
         } catch (err) {
             console.error('History fetch error:', err);
         }
-    }, [currentChatId, offlineQueue]);
+    }, [currentChatId]);
 
     useEffect(() => {
         if (user) {
@@ -77,13 +85,20 @@ export const ChatProvider = ({ children }) => {
             });
 
             socketRef.current.on('message_received', (data) => {
+                // If we are on "New Chat" (no URL ID) but receive a message with a real ID, 
+                // we should silently update the URL to match this new reality.
+                if (!currentChatId && data.userMessage.chatId && data.userMessage.chatId !== 'null') {
+                    setCurrentChatId(data.userMessage.chatId);
+                    window.history.pushState({}, '', `/chat/${data.userMessage.chatId}`);
+                }
+
+                // Single Source of Truth: We only add the message when the server confirms it.
+                // React's useOptimistic will automatically discard the calculated optimistic state 
+                // and replace it with this new real state.
                 setMessages(prev => {
-                    // Find the optimistic temp message and replace it
-                    const optimisticIndex = prev.findIndex(m => m._id.startsWith('temp-') && m.content === data.userMessage.content);
-                    if (optimisticIndex !== -1) {
-                        const newMessages = [...prev];
-                        newMessages[optimisticIndex] = data.userMessage;
-                        return newMessages;
+                    // Safety check: ignore if already exists
+                    if (prev.some(m => m._id === data.userMessage._id)) {
+                        return prev;
                     }
                     return [...prev, data.userMessage];
                 });
@@ -91,17 +106,37 @@ export const ChatProvider = ({ children }) => {
 
             socketRef.current.on(`chat_chunk_${user._id}`, (data) => {
                 if (data.finished) {
-                    if (data.aiMessage) {
+                    if (data.error && data.fallbackContent) {
                         setMessages(prev => {
                             const last = prev[prev.length - 1];
-                            // Check for both legacy and new stable ID patterns
+                            // If we already started streaming, update the existing message
+                            if (last && last.role === 'assistant' && (last.isStreaming || last._id.startsWith('streaming-'))) {
+                                return [...prev.slice(0, -1), { 
+                                    ...last, 
+                                    content: last.content + "\n\n" + data.fallbackContent,
+                                    isStreaming: false,
+                                    isError: true 
+                                }];
+                            }
+                            // Otherwise add a new error message
+                            return [...prev, {
+                                _id: `err-${Date.now()}`,
+                                role: 'assistant',
+                                content: data.fallbackContent,
+                                isStreaming: false,
+                                isError: true
+                            }];
+                        });
+                    } else if (data.aiMessage) {
+                        setMessages(prev => {
+                            const last = prev[prev.length - 1];
                             if (last && last.role === 'assistant' && (last.isStreaming || last._id.startsWith('streaming-'))) {
                                 return [...prev.slice(0, -1), { 
                                     ...data.aiMessage, 
-                                    _id: last._id, // KEEP STABLE KEY TO PREVENT FLICKER
-                                    dbId: data.aiMessage._id, // Store real ID for potential delete/share
+                                    _id: last._id, 
+                                    dbId: data.aiMessage._id,
                                     isStreaming: false, 
-                                    shouldAnimate: false // Content is already fully streamed, no need to type again
+                                    shouldAnimate: false
                                 }];
                             }
                             return prev;
@@ -138,18 +173,38 @@ export const ChatProvider = ({ children }) => {
         }
     }, [user, fetchSessions]);
 
+    // Unified effect for data synchronization
     useEffect(() => {
         if (user) {
-            fetchHistory();
+            // Fetch sessions once and whenever user changes
             fetchSessions();
         }
-    }, [user, currentChatId, fetchHistory, fetchSessions]);
+    }, [user, fetchSessions]);
+
+    useEffect(() => {
+        if (user) {
+            if (currentChatId) {
+                fetchHistory(currentChatId);
+            } else {
+                // FORCE RESET: Distinctly clear messages when entering "New Chat"
+                // This clean slate is critical for useOptimistic to reset its base
+                console.log('[ChatContext] ENTERING NEW CHAT - FORCING RESET');
+                setMessages([]);
+            }
+        }
+    }, [user, currentChatId, fetchHistory]);
 
     useEffect(() => {
         if (user) {
             localStorage.setItem(`offline_msgs_${user._id}`, JSON.stringify(offlineQueue));
         }
     }, [offlineQueue, user]);
+
+    // React 19 useOptimistic Hook
+    const [optimisticMessages, addOptimisticMessage] = useOptimistic(
+        messages,
+        (state, newMessage) => [...state, newMessage]
+    );
 
     const sendMessage = (content) => {
         setLoading(true);
@@ -160,22 +215,27 @@ export const ChatProvider = ({ children }) => {
         if (!activeChatId) {
             activeChatId = Math.random().toString(36).substring(2, 11);
             setCurrentChatId(activeChatId);
+
             if (user) {
                 localStorage.setItem(`lastChatId_${user._id}`, activeChatId);
             }
         }
 
-        const tempId = 'temp-' + Date.now();
         const tempUserMsg = {
-            _id: tempId,
+            _id: 'temp-' + Date.now(),
             content,
             role: 'user',
             chatId: activeChatId,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            isOptimistic: true 
         };
 
-        // Aggressive optimism at state level
-        setMessages(prev => [...prev, tempUserMsg]);
+        console.log('[ChatContext] Optimization: Adding temp message', tempUserMsg);
+        
+        // 1. Optimistic Update (Instant feedback) - WRAPPED IN TRANSITION for React 19
+        startTransition(() => {
+            addOptimisticMessage(tempUserMsg);
+        });
         
         if (socketRef.current && socketRef.current.connected) {
             socketRef.current.emit('send_message', { 
@@ -183,26 +243,35 @@ export const ChatProvider = ({ children }) => {
                 chatId: activeChatId 
             });
         } else {
-            // Mark as offline if we can't send
-            const offlineMsg = { ...tempUserMsg, isOffline: true };
-            setMessages(prev => prev.map(m => m._id === tempId ? offlineMsg : m));
-            setOfflineQueue(prev => [...prev, offlineMsg]);
+            // Error handling remains ...
+            setError("Connection lost. Please try again.");
             setLoading(false);
-            setError("Something went wrong. Your message has been saved locally.");
         }
     };
 
     const createNewChat = useCallback(() => {
+        // 1. Reset State
         setCurrentChatId(null);
         setMessages([]);
+
+        // 2. Clear Persistence (with small delay to ensure rendering sync)
         if (user) {
-            localStorage.removeItem(`lastChatId_${user._id}`);
+            setTimeout(() => {
+                localStorage.removeItem(`lastChatId_${user._id}`);
+            }, 0);
         }
     }, [user]);
 
     const switchChat = useCallback((chatId) => {
+        console.log(`[ChatContext] switchChat called with: ${chatId}`);
+        // Prevent setting the state to common error strings
+        if (chatId === 'null' || chatId === 'undefined') {
+            setCurrentChatId(null);
+            return;
+        }
+
         setCurrentChatId(chatId);
-        if (user) {
+        if (user && chatId) {
             localStorage.setItem(`lastChatId_${user._id}`, chatId);
         }
     }, [user]);
@@ -252,7 +321,7 @@ export const ChatProvider = ({ children }) => {
 
     return (
         <ChatContext.Provider value={{
-            messages,
+            messages: optimisticMessages, // Expose the optimistic version to the UI
             chatSessions,
             loading,
             typingUser,
@@ -271,4 +340,4 @@ export const ChatProvider = ({ children }) => {
     );
 };
 
-export const useChat = () => useContext(ChatContext);
+export const useChat = () => use(ChatContext);

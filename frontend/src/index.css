@@ -104,6 +104,10 @@ body {
   .btn-primary:active {
     transform: scale(0.98);
   }
+
+  .shadow-premium {
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  }
 }
 
 /* Animations */
@@ -195,4 +199,12 @@ body {
 }
 .animate-spin-slow {
     animation: spin-slow 8s infinite linear;
+}
+
+@keyframes pulse-soft {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.05); }
+}
+.animate-pulse-soft {
+    animation: pulse-soft 3s infinite ease-in-out;
 }

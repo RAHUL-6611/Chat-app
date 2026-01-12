@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
     Plus, 
     MessageSquare, 
@@ -21,6 +22,7 @@ const Sidebar = ({
     user, 
     logout 
 }) => {
+    const navigate = useNavigate();
     const [showClearModal, setShowClearModal] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
 
@@ -54,7 +56,13 @@ const Sidebar = ({
                 </div>
 
                 <button 
-                    onClick={createNewChat}
+                    onClick={() => {
+                        createNewChat();
+                        // Explicitly signal that we are coming from "New Chat" to prevent
+                        // Home.jsx from redirecting us back to the old ID.
+                        navigate('/', { replace: true, state: { fromNewChat: true } });
+                        setSidebarOpen(false);
+                    }}
                     className="flex items-center gap-3 w-full p-3 mb-6 bg-primary/10 border border-primary/20 text-primary rounded-xl hover:bg-primary hover:text-white transition-all duration-300 font-semibold active:scale-[0.98] group"
                 >
                     <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center group-hover:bg-white/20 transition-colors">
@@ -98,7 +106,10 @@ const Sidebar = ({
                         chatSessions.map((session) => (
                             <div 
                                 key={session._id}
-                                onClick={() => switchChat(session._id)}
+                                onClick={() => {
+                                    navigate(`/chat/${session._id}`);
+                                    setSidebarOpen(false);
+                                }}
                                 className={`p-3 rounded-lg border flex items-center gap-3 cursor-pointer transition-all group ${
                                     currentChatId === session._id 
                                         ? 'bg-primary/10 border-primary/20' 

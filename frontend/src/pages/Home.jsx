@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
 import { 
@@ -36,6 +36,7 @@ const Home = () => {
     
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const messagesEndRef = useRef(null);
+    const isNewChatActionRef = useRef(false);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -45,33 +46,48 @@ const Home = () => {
         scrollToBottom();
     }, [messages, typingUser, loading]);
 
-    // 1. URL -> State: Sync context when user navigates via browser/URL
-    useEffect(() => {
-        if (id && id !== currentChatId) {
-            switchChat(id);
-        } else if (!id && currentChatId) {
-            // Intentional navigation to root / should clear the current chat
-            switchChat(null);
-        }
-    }, [id, switchChat]);
+    const location = useLocation();
 
-    // 2. State -> URL: Sync URL when state changes (e.g. from Sidebar or starting a new session)
+    // Track "New Chat" action intent
     useEffect(() => {
-        if (currentChatId) {
+        if (location.state?.fromNewChat) {
+            isNewChatActionRef.current = true;
+        }
+    }, [location.state?.fromNewChat]);
+
+    // 1. URL -> State Sync: The URL is the definitive source
+    useEffect(() => {
+        // Handle explicit "New Chat" action
+        if (isNewChatActionRef.current) {
+            if (currentChatId) switchChat(null);
+            isNewChatActionRef.current = false; // Reset flag
+            return;
+        }
+
+        if (id) {
+            // Guard against "null" string appearing in URL from bad state syncs
+            if (id === 'null') {
+                navigate('/', { replace: true });
+                return;
+            }
             if (id !== currentChatId) {
+                switchChat(id);
+            }
+        } else {
+            // No ID in URL (we are at root /)
+            // But if CurrentChatId exists, GO THERE. This handles the "First Message" case.
+            if (currentChatId) {
                 navigate(`/chat/${currentChatId}`, { replace: true });
             }
-        } else if (id) {
-            // currentChatId is null but URL has an ID, handled by Effect 1
-            // but just in case we are at /, navigate ensures it stays at /
-            navigate('/', { replace: true });
         }
-    }, [currentChatId, id, navigate]);
+    }, [id, currentChatId, switchChat, navigate]);
+
 
     // Wrapper for New Chat button
     const handleNewChat = () => {
-        navigate('/', { replace: true }); // Move to root first
-        createNewChat(); // Then reset context
+        if (user) localStorage.removeItem(`lastChatId_${user._id}`);
+        switchChat(null);
+        navigate('/', { replace: true });
     };
 
     const isAssistantStreaming = messages.length > 0 && 
@@ -79,10 +95,10 @@ const Home = () => {
         (messages[messages.length - 1].isStreaming || messages[messages.length - 1]._id.toString().startsWith('streaming-'));
 
     const suggestions = [
-        { icon: Bot, text: "Explain the COMPASS system" },
-        { icon: MessageSquare, text: "How does ASH self-healing work?" },
-        { icon: Plus, text: "Property leasing automation" },
-        { icon: History, text: "Logistics dispatch optimization" }
+        { icon: Bot, text: "I need to track my pending order" },
+        { icon: MessageSquare, text: "What is your return policy?" },
+        { icon: Plus, text: "How do I reset my account password?" },
+        { icon: History, text: "I have a question about my billing" }
     ];
 
     return (
@@ -114,7 +130,7 @@ const Home = () => {
                 {/* Messages Area */}
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2 custom-scrollbar scroll-smooth">
                     <div className="max-w-4xl mx-auto w-full flex flex-col pt-4">
-                        {messages.length === 0 && (
+                        {messages.length === 0 && !loading && (
                             <div className="h-full flex flex-col items-center justify-center text-center mt-32 animate-fade-in">
                                 {/* <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-primary/10 border border-primary/20">
                                     <Bot className="w-10 h-10 text-primary" />
